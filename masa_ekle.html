@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8" /><title>Masa Ekle</title></head>
+<body>
+  <button id="ekleBtn">Masaları Ekle</button>
+  <pre id="log"></pre>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTAARKP1spxG1zfo6tyCq2o0zt4VMLIUM",
+      authDomain: "kutuphanerezervasyon-ff667.firebaseapp.com",
+      projectId: "kutuphanerezervasyon-ff667",
+      storageBucket: "kutuphanerezervasyon-ff667.firebasestorage.app",
+      messagingSenderId: "856718475446",
+      appId: "1:856718475446:web:bf948285bc322d1a617"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    document.getElementById('ekleBtn').addEventListener('click', async () => {
+      const log = document.getElementById('log');
+      log.textContent = "Masalar ekleniyor...\n";
+
+      for (let i = 1; i <= 100; i++) {
+        await setDoc(doc(db, "masalar", `masa_${i}`), {
+          masaNo: i,
+          durum: "boş"
+        });
+        log.textContent += `${i}. masa eklendi.\n`;
+      }
+      log.textContent += "Tüm masalar eklendi!";
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Giriş Sayfası</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #3b82f6, #9333ea);
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      background: white;
+      padding: 36px;
+      border-radius: 14px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+      text-align: center;
+      width: 360px;
+      transition: all 0.25s ease;
+    }
+
+    h2 { margin-bottom: 18px; color:#111; }
+
+    input {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      font-size: 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+      background: #3b82f6;
+    }
+
+    button:hover { filter: brightness(.95); }
+    .secondary { background:#6b7280; }
+
+    .role-row { display:flex; gap:8px; margin-bottom:12px; }
+    .role-btn { flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; background:#e5e7eb; color:#111; }
+    .role-btn.active { background:#2563eb; color:white; }
+
+    .hidden { display:none; }
+    .note { font-size:13px; color:#374151; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="container" id="mainMenu">
+    <h2>Giriş Türünü Seç</h2>
+    <div class="role-row">
+      <button id="studentBtn" class="role-btn">🎓 Öğrenci</button>
+      <button id="adminBtn" class="role-btn">🛠️ Admin</button>
+    </div>
+    <div id="chooseNote" class="note">
+      Öğrenci: @ozal.edu.tr ile giriş • Admin: yalnızca yetkili e-posta
+    </div>
+  </div>
+
+  <div class="container hidden" id="loginSection">
+    <h2 id="loginTitle">Giriş Yap</h2>
+
+    <input type="email" id="email" placeholder="E-posta" />
+    <input type="password" id="password" placeholder="Şifre" />
+
+    <button id="loginBtn">Giriş Yap</button>
+    <button id="goRegisterBtn">Kayıt Ol (Öğrenci)</button>
+    <button id="backBtn" class="secondary">← Geri</button>
+
+    <div id="msg" class="note" style="margin-top:10px;color:#b91c1c;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    // 🔥 Firebase ayarları
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTAARKP1spxG1zfo6tyCq2o0zt4VMLIUM",
+      authDomain: "kutuphanerezervasyon-ff667.firebaseapp.com",
+      projectId: "kutuphanerezervasyon-ff667",
+      storageBucket: "kutuphanerezervasyon-ff667.firebasestorage.app",
+      messagingSenderId: "856718475446",
+      appId: "1:856718475446:web:bf948285bc6db322d1a617"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const ADMIN_EMAIL = "kurtharun175@gmail.com";
+
+    const mainMenu = document.getElementById("mainMenu");
+    const loginSection = document.getElementById("loginSection");
+    const studentBtn = document.getElementById("studentBtn");
+    const adminBtn = document.getElementById("adminBtn");
+    const backBtn = document.getElementById("backBtn");
+    const loginTitle = document.getElementById("loginTitle");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const goRegisterBtn = document.getElementById("goRegisterBtn");
+    const msg = document.getElementById("msg");
+
+    let isAdminLogin = false;
+
+    function showMain() {
+      mainMenu.classList.remove("hidden");
+      loginSection.classList.add("hidden");
+      emailInput.value = "";
+      passwordInput.value = "";
+      msg.textContent = "";
+    }
+
+    studentBtn.addEventListener("click", () => {
+      isAdminLogin = false;
+      studentBtn.classList.add("active");
+      adminBtn.classList.remove("active");
+      mainMenu.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+      loginTitle.innerText = "🎓 Öğrenci Girişi";
+      goRegisterBtn.style.display = "block";
+      msg.textContent = "";
+    });
+
+    adminBtn.addEventListener("click", () => {
+      isAdminLogin = true;
+      adminBtn.classList.add("active");
+      studentBtn.classList.remove("active");
+      mainMenu.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+      loginTitle.innerText = "🛠️ Admin Girişi";
+      goRegisterBtn.style.display = "none";
+    });
+
+    backBtn.addEventListener("click", showMain);
+
+    // 🔑 Giriş işlemi
+    loginBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      msg.style.color = "#b91c1c";
+      msg.textContent = "";
+
+      if (!email || !password) {
+        msg.textContent = "Lütfen e-posta ve şifre girin.";
+        return;
+      }
+
+      if (isAdminLogin) {
+        if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+          msg.textContent = "Bu giriş yalnızca admin hesabı içindir.";
+          return;
+        }
+
+        try {
+          await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+          window.location.href = "admin.html";
+        } catch (err) {
+          msg.textContent = "Giriş hatası: " + err.message;
+          console.error(err);
+        }
+      } else {
+        if (!email.endsWith("@ozal.edu.tr")) {
+          msg.textContent = "Sadece @ozal.edu.tr e-posta adresleriyle giriş yapılabilir.";
+          return;
+        }
+
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+          window.location.href = "index.html";
+        } catch (err) {
+          msg.textContent = "Giriş hatası: " + err.message;
+          console.error(err);
+        }
+      }
+    });
+
+    // 🧾 Kayıt sayfasına yönlendirme
+    goRegisterBtn.addEventListener("click", () => {
+      window.location.href = "kayit.html";
+    });
+
+    showMain();
+  </script>
+</body>
+</html>

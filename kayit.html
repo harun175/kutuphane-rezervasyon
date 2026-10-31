@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kayıt Ol</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #3b82f6, #9333ea);
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      background: white;
+      padding: 36px;
+      border-radius: 14px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+      text-align: center;
+      width: 360px;
+    }
+
+    h2 { margin-bottom: 18px; color:#111; }
+
+    input {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+      background: #3b82f6;
+      font-size: 15px;
+    }
+
+    button:hover { filter: brightness(.95); }
+    .secondary { background:#6b7280; }
+    .note { font-size:13px; color:#374151; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🎓 Öğrenci Kaydı</h2>
+    <input type="text" id="name" placeholder="Ad Soyad" />
+    <input type="email" id="email" placeholder="E-posta (@ozal.edu.tr)" />
+    <input type="password" id="password" placeholder="Şifre" />
+    <button id="registerBtn">Kayıt Ol</button>
+    <button id="backBtn" class="secondary">← Girişe Dön</button>
+    <div id="msg" class="note" style="margin-top:10px;color:#b91c1c;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTAARKP1spxG1zfo6tyCq2o0zt4VMLIUM",
+      authDomain: "kutuphanerezervasyon-ff667.firebaseapp.com",
+      projectId: "kutuphanerezervasyon-ff667",
+      storageBucket: "kutuphanerezervasyon-ff667.firebasestorage.app",
+      messagingSenderId: "856718475446",
+      appId: "1:856718475446:web:bf948285bc6db322d1a617"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const registerBtn = document.getElementById("registerBtn");
+    const backBtn = document.getElementById("backBtn");
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const msg = document.getElementById("msg");
+
+    registerBtn.addEventListener("click", async () => {
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      msg.textContent = "";
+      msg.style.color = "#b91c1c";
+
+      if (!name || !email || !password) {
+        msg.textContent = "Lütfen tüm alanları doldurun.";
+        return;
+      }
+
+      if (!email.endsWith("@ozal.edu.tr")) {
+        msg.textContent = "Kayıt sadece @ozal.edu.tr adresleri için geçerlidir.";
+        return;
+      }
+
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", userCred.user.uid), {
+          name: name,
+          email: email
+        });
+
+        msg.style.color = "#064e3b";
+        msg.textContent = "Kayıt başarılı! Şimdi giriş yapabilirsiniz.";
+
+        setTimeout(() => {
+          window.location.href = "giris.html";
+        }, 2000);
+      } catch (err) {
+        msg.textContent = "Kayıt hatası: " + err.message;
+        console.error(err);
+      }
+    });
+
+    backBtn.addEventListener("click", () => {
+      window.location.href = "giris.html";
+    });
+  </script>
+</body>
+</html>

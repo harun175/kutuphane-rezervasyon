@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kütüphane Rezervasyon Sistemi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    #authSection, #reservationSection {
+      background: white;
+      padding: 25px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 320px;
+      text-align: center;
+    }
+
+    input, select, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #logoutBtn {
+      background-color: #dc3545;
+    }
+
+    #logoutBtn:hover {
+      background-color: #a71d2a;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kütüphane Rezervasyon Sistemi</h1>
+
+  <!-- 🔐 Giriş / Kayıt Bölümü -->
+  <div id="authSection">
+    <h3>Öğrenci Girişi / Kayıt</h3>
+    <input type="text" id="name" placeholder="Ad Soyad" required />
+    <input type="email" id="email" placeholder="ogrencino@ozal.edu.tr" required />
+    <input type="password" id="password" placeholder="Şifre" required />
+    <button id="registerBtn">Kayıt Ol</button>
+    <button id="loginBtn">Giriş Yap</button>
+  </div>
+
+  <!-- 📅 Rezervasyon Bölümü -->
+  <div id="reservationSection" style="display:none;">
+    <p id="welcome"></p>
+    <button id="logoutBtn">Çıkış Yap</button>
+
+    <form id="reservationForm">
+      <label for="date">Tarih:</label><br />
+      <input type="date" id="date" required /><br /><br />
+
+      <label for="masa">Masa Seç:</label><br />
+      <select id="masa" required>
+        <option value="">Lütfen bir masa seçin</option>
+      </select><br /><br />
+
+      <label for="time">Başlangıç Saati:</label><br />
+      <input type="time" id="time" required /><br /><br />
+
+      <button type="submit">Rezervasyon Yap</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      query,
+      orderBy,
+      updateDoc,
+      doc,
+      where,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTAARKP1spxG1zfo6tyCq2o0zt4VMLIUM",
+      authDomain: "kutuphanerezervasyon-ff667.firebaseapp.com",
+      projectId: "kutuphanerezervasyon-ff667",
+      storageBucket: "kutuphanerezervasyon-ff667.firebasestorage.app",
+      messagingSenderId: "856718475446",
+      appId: "1:856718475446:web:bf948285bc6db322d1a617"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // 📅 Geçmiş tarihleri engelle
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("date").setAttribute("min", today);
+
+    // 🔐 Butonlar
+    const loginBtn = document.getElementById("loginBtn");
+    const registerBtn = document.getElementById("registerBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // 🆕 Kayıt
+    registerBtn.addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!name || !email || !password) {
+        alert("Lütfen tüm alanları doldurun.");
+        return;
+      }
+
+      if (!email.endsWith("@ozal.edu.tr")) {
+        alert("Sadece @ozal.edu.tr uzantılı e-postalarla kayıt olabilirsiniz!");
+        return;
+      }
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Ad soyadı Firestore'a kaydet
+        await setDoc(doc(db, "users", user.uid), {
+          name,
+          email
+        });
+
+        alert("Kayıt başarılı, giriş yapabilirsiniz!");
+      } catch (error) {
+        alert("Kayıt hatası: " + error.message);
+      }
+    });
+
+    // 🔑 Giriş
+    loginBtn.addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert("Giriş başarılı!");
+      } catch (error) {
+        alert("Giriş başarısız: " + error.message);
+      }
+    });
+
+    // 🚪 Çıkış
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      alert("Çıkış yapıldı.");
+    });
+
+    // 👀 Oturum Değişikliği
+    onAuthStateChanged(auth, async (user) => {
+      const authSection = document.getElementById("authSection");
+      const reservationSection = document.getElementById("reservationSection");
+      const welcome = document.getElementById("welcome");
+
+      if (user) {
+        authSection.style.display = "none";
+        reservationSection.style.display = "block";
+
+        // Kullanıcının adını Firestore'dan çek
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDocs(collection(db, "users"));
+        let name = "";
+        userSnap.forEach((docSnap) => {
+          if (docSnap.id === user.uid) name = docSnap.data().name;
+        });
+
+        welcome.textContent = `Hoş geldin, ${name || user.email}`;
+      } else {
+        authSection.style.display = "block";
+        reservationSection.style.display = "none";
+      }
+    });
+
+    // 🪑 Masaları Listele
+    window.addEventListener("DOMContentLoaded", async () => {
+      const masaSelect = document.getElementById("masa");
+      const masalarRef = collection(db, "masalar");
+      const q = query(masalarRef, orderBy("masaNo", "asc"));
+      const querySnapshot = await getDocs(q);
+
+      masaSelect.innerHTML = '<option value="">Lütfen bir masa seçin</option>';
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.durum === "boş") {
+          const option = document.createElement("option");
+          option.value = docSnap.id;
+          option.textContent = `Masa ${data.masaNo}`;
+          option.dataset.masaNo = data.masaNo;
+          masaSelect.appendChild(option);
+        }
+      });
+    });
+
+    // ⏱ Saat çakışması kontrolü
+    function timeStringToMinutes(t) {
+      const [hh, mm] = t.split(":").map(Number);
+      return hh * 60 + mm;
+    }
+
+    async function checkConflict(masaNo, date, startMinutes, endMinutes) {
+      const reservationsRef = collection(db, "reservations");
+      const q = query(reservationsRef, where("masaNo", "==", masaNo), where("date", "==", date));
+      const snapshot = await getDocs(q);
+
+      function isOverlap(startA, endA, startB, endB) {
+        return !(endA <= startB || startA >= endB);
+      }
+
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        const existingStart = timeStringToMinutes(data.time);
+        const existingEnd = existingStart + 60;
+        if (isOverlap(startMinutes, endMinutes, existingStart, existingEnd)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // 💾 Rezervasyon Kaydet
+    document.getElementById("reservationForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Lütfen giriş yapın!");
+        return;
+      }
+
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value;
+      const masaSelect = document.getElementById("masa");
+      const masaBelgeID = masaSelect.value;
+      const masaNo = parseInt(masaSelect.options[masaSelect.selectedIndex].dataset.masaNo);
+
+      if (!masaBelgeID) {
+        alert("Lütfen bir masa seçin.");
+        return;
+      }
+
+      const startMinutes = timeStringToMinutes(time);
+      const endMinutes = startMinutes + 60;
+
+      const conflict = await checkConflict(masaNo, date, startMinutes, endMinutes);
+      if (conflict) {
+        alert("Bu masa bu saat için dolu. Başka saat seçin.");
+        return;
+      }
+
+      try {
+        // Kullanıcı adını al
+        const userRef = doc(db, "users", user.uid);
+        const allUsers = await getDocs(collection(db, "users"));
+        let name = "";
+        allUsers.forEach((d) => {
+          if (d.id === user.uid) name = d.data().name;
+        });
+
+        await addDoc(collection(db, "reservations"), {
+          name,
+          email: user.email,
+          date,
+          time,
+          masaNo
+        });
+
+        const masaRef = doc(db, "masalar", masaBelgeID);
+        await updateDoc(masaRef, { durum: "dolu" });
+
+        alert("Rezervasyon başarıyla oluşturuldu!");
+        location.reload();
+      } catch (error) {
+        alert("Hata: " + error.message);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Panel - Rezervasyon Yönetimi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f9fc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 80%;
+      max-width: 900px;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #007bff;
+      color: white;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    button {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background-color: #b02a37;
+    }
+
+    #refreshBtn {
+      background-color: #28a745;
+      margin-bottom: 20px;
+    }
+
+    #refreshBtn:hover {
+      background-color: #1f7a33;
+    }
+  </style>
+</head>
+<body>
+  <h1>📋 Rezervasyonlar (Admin Panel)</h1>
+  <button id="refreshBtn">🔄 Listeyi Yenile</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Ad Soyad</th>
+        <th>E-posta</th>
+        <th>Tarih</th>
+        <th>Masa No</th>
+        <th>Başlangıç Saati</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody id="reservationsBody">
+      <tr><td colspan="6">Yükleniyor...</td></tr>
+    </tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      getDoc,
+      deleteDoc,
+      doc,
+      updateDoc,
+      query,
+      orderBy,
+      where
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    // 🔥 Firebase yapılandırması
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTAARKP1spxG1zfo6tyCq2o0zt4VMLIUM",
+      authDomain: "kutuphanerezervasyon-ff667.firebaseapp.com",
+      projectId: "kutuphanerezervasyon-ff667",
+      storageBucket: "kutuphanerezervasyon-ff667.firebasestorage.app",
+      messagingSenderId: "856718475446",
+      appId: "1:856718475446:web:bf948285bc6db322d1a617"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const tbody = document.getElementById("reservationsBody");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    // 📋 Rezervasyonları Yükle
+    async function loadReservations() {
+      tbody.innerHTML = "<tr><td colspan='6'>Yükleniyor...</td></tr>";
+      try {
+        const reservationsRef = collection(db, "reservations");
+        const q = query(reservationsRef, orderBy("date", "asc"), orderBy("time", "asc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          tbody.innerHTML = "<tr><td colspan='6'>Rezervasyon bulunamadı.</td></tr>";
+          return;
+        }
+
+        tbody.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${data.name || "-"}</td>
+            <td>${data.email || "-"}</td>
+            <td>${data.date}</td>
+            <td>${data.masaNo}</td>
+            <td>${data.time}</td>
+            <td><button data-id="${id}">İptal Et</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // 🗑 İptal Et Butonları
+        tbody.querySelectorAll("button").forEach(button => {
+          button.addEventListener("click", async (e) => {
+            const id = e.target.dataset.id;
+            if (confirm("Bu rezervasyonu iptal etmek istediğinizden emin misiniz?")) {
+              await cancelReservation(id);
+            }
+          });
+        });
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan='6'>Hata oluştu: ${error.message}</td></tr>`;
+        console.error("loadReservations error:", error);
+      }
+    }
+
+    // ❌ Rezervasyonu İptal Et
+    async function cancelReservation(reservationId) {
+      try {
+        const reservationRef = doc(db, "reservations", reservationId);
+        const snap = await getDoc(reservationRef);
+
+        if (!snap.exists()) {
+          alert("Rezervasyon bulunamadı!");
+          return;
+        }
+
+        const data = snap.data();
+
+        // Masayı boş yap
+        const masalarRef = collection(db, "masalar");
+        const q = query(masalarRef, where("masaNo", "==", data.masaNo));
+        const masalarSnap = await getDocs(q);
+
+        for (const masaDoc of masalarSnap.docs) {
+          const masaRef = doc(db, "masalar", masaDoc.id);
+          await updateDoc(masaRef, { durum: "boş" });
+        }
+
+        // Rezervasyonu sil
+        await deleteDoc(reservationRef);
+
+        alert("Rezervasyon iptal edildi.");
+        loadReservations();
+      } catch (error) {
+        alert("Hata: " + error.message);
+        console.error("cancelReservation error:", error);
+      }
+    }
+
+    // 🔄 Yenile butonu
+    refreshBtn.addEventListener("click", loadReservations);
+
+    // Sayfa açıldığında otomatik yükle
+    loadReservations();
+  </script>
+</body>
+</html>
